@@ -7,6 +7,7 @@ A Unity 3D project demonstrating a custom input manager with on the fly remappin
 # Install
 - Download and unzip.
 - Open with Unity 3D.
+
 If you want to use this code in another project, make sure that you copy:
-- "ControllerTesting/Assets/MGInputManager" folder into the associated folder on your new project.
-- "ControllerTesting/Project Settings/InputManager.asset" into the associated folder on your new project.
+"ControllerTesting/Assets/MGInputManager" folder into the associated folder on your new project.
+"ControllerTesting/Project Settings/InputManager.asset" into the associated folder on your new project.
