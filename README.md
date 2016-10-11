@@ -10,8 +10,8 @@ A Unity 3D project demonstrating a custom input manager with on the fly remappin
 
 If you want to use this code in another project, make sure that you copy:
 
-**WARNING: This will delete any previous Unity Input Manager setup you may have done in the new project**
-
 "ControllerTesting/Assets/MGInputManager" folder into the associated folder on your new project.
+
+**WARNING: This will delete any previous Unity Input Manager setup you may have done in the new project**
 
 "ControllerTesting/Project Settings/InputManager.asset" into the associated folder on your new project.
