@@ -1,0 +1,4 @@
+sceneSetups:
+- path: Assets/MGInputManager/Scenes/MovementExample.unity
+  isLoaded: 1
+  isActive: 1
