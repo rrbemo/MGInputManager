@@ -15,3 +15,15 @@ If you want to use this code in another project, make sure that you copy:
 **WARNING: This will delete any previous Unity Input Manager setup you may have done in the new project**
 
 "ControllerTesting/Project Settings/InputManager.asset" into the associated folder on your new project.
+
+# Modifications
+
+"ControllerTesting/Assets/MGInputManager/Scripts/InputManager.cs" (InputManager) contains most of the information you'll want to change or customize via code (beside the UI stuff). With any changes, you may need to modify your menu or UI to accommodate. The UI is auto-built from the ActionName enum in my scene, but you can do something different if you'd like.
+
+- Add new Actions and apply their default Axis
+
+Modify the PrepareActions() method of InputManager by adding additional default actions to each InputInterfaceType of interfaceInputActions. You will also want to add the new action the the ActionName enum. If there is an inverse action, make sure you specify that as well.
+
+- Add additional Axis or Interface Types
+
+Modify the AxisName or InputInterfaceType enums as desired. If you're adding a new InputInterfaceType, you will likely have to modify the PrepareActions() method of InputManager too. I haven't done either of these too much as of late, so there may be additional steps.
