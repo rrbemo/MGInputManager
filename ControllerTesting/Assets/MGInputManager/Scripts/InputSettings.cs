@@ -8,67 +8,151 @@ using MindGrown;
 
 public class InputSettings : MonoBehaviour
 {
-    public Transform menuPanel;
-    public GameObject rowPrefab;
-    List<GameObject> buttonRows;
+    public GameObject actionRowPrefab;
+    public Transform remappingContainer;
+
+    public Button resetToDefaultButton;
+
+    [Header("Interface Toggles")]
+    public Toggle keyboardToggle;
+    public Toggle ps4Toggle;
+    public Toggle xboxOneToggle;
+
+    private List<GameObject> actionRows;
+    private Toggle currentlyActiveInterfaceToggle;
 
     void Start()
     {
-        buttonRows = new List<GameObject>();
-        InputAction action = null;
-        foreach (KeyValuePair<ActionName, InputAction> entry in InputManager.inputActions)
-        {
-            action = entry.Value;
+        keyboardToggle.name = InputInterfaceType.KeyboardMouse.ToString();
+        ps4Toggle.name = InputInterfaceType.PS4Controller.ToString();
+        xboxOneToggle.name = InputInterfaceType.XboxOneController.ToString();
+        keyboardToggle.onValueChanged.RemoveAllListeners();
+        ps4Toggle.onValueChanged.RemoveAllListeners();
+        xboxOneToggle.onValueChanged.RemoveAllListeners();
+        resetToDefaultButton.onClick.RemoveAllListeners();
+        keyboardToggle.onValueChanged.AddListener(KeyboardInterfaceToggled);
+        ps4Toggle.onValueChanged.AddListener(PS4InterfaceToggled);
+        xboxOneToggle.onValueChanged.AddListener(XboxOneInterfaceToggled);
+        resetToDefaultButton.onClick.AddListener(() => ResetToDefaultMappings());
 
-            // Create a new button row
-            Transform newRow = Instantiate(rowPrefab).transform;
-            newRow.name = action.Name.ToString();
-            newRow.FindChild("Title").GetComponent<Text>().text = action.Description;
-            newRow.FindChild("Button").FindChild("Text").GetComponent<Text>().text = action.GetAxisName();
-            newRow.FindChild("Button").GetComponent<Button>().onClick.AddListener(() => StartAssignment());
-            newRow.transform.SetParent(menuPanel);
-            buttonRows.Add(newRow.gameObject);
-        }
-        menuPanel.gameObject.SetActive(false);
-        string[] names = Input.GetJoystickNames();
-        foreach (string name in names)
-        {
-            Debug.Log(name);
-        }
+        InitializeActionButtons();
+        ActivateCurrentInterfaceToggle();
     }
 
-    void Update()
+    void InitializeActionButtons()
     {
-        if (Input.GetKeyDown(KeyCode.Escape) && !menuPanel.gameObject.activeSelf)
+
+        actionRows = new List<GameObject>();
+        InputAction action = null;
+        ActionRowController rowController = null;
+        foreach (KeyValuePair<ActionName, InputAction> entry in InputManager.currentInputActions)
         {
-            menuPanel.gameObject.SetActive(true);
+            action = entry.Value;
+            Transform newRow = Instantiate(actionRowPrefab).transform;
+            rowController = newRow.GetComponent<ActionRowController>();
+
+            newRow.SetParent(remappingContainer);
+            newRow.localPosition = Vector3.zero;
+            newRow.localScale = Vector3.one;
+            newRow.localRotation = Quaternion.identity;
+            newRow.name = action.Name.ToString();
+            rowController.actionTitle.text = action.Description;
+            rowController.actionButtonText.text = action.GetAxisDescription();
+            rowController.actionButton.GetComponent<RemapButtonClick>().inputSettings = this;
+
+            actionRows.Add(newRow.gameObject);
         }
-        else if (Input.GetKeyDown(KeyCode.Escape) && menuPanel.gameObject.activeSelf)
-        {
-            menuPanel.gameObject.SetActive(false);
-        }
+
+        rowController = actionRows[0].GetComponent<ActionRowController>();
+        // Xbox toggle needs to move to have down and right move to mapping buttons.
+        Navigation xboxToggleNav = xboxOneToggle.navigation;
+        xboxToggleNav.selectOnDown = rowController.actionButton;
+        xboxToggleNav.selectOnRight = rowController.actionButton;
+        xboxOneToggle.navigation = xboxToggleNav;
+
+        // Set the first button with explicit navigation to link in with rest of page.
+        Navigation firstButtonNav = new Navigation();
+        firstButtonNav.mode = Navigation.Mode.Explicit;
+        firstButtonNav.selectOnUp = xboxOneToggle;
+        firstButtonNav.selectOnDown = actionRows[1].GetComponent<ActionRowController>().actionButton;
+        rowController.actionButton.navigation = firstButtonNav;
+
+        rowController = actionRows[actionRows.Count - 1].GetComponent<ActionRowController>();
+        // Set the last button with explicit navigation
+        Navigation lastButtonNav = new Navigation();
+        lastButtonNav.mode = Navigation.Mode.Explicit;
+        lastButtonNav.selectOnUp = actionRows[actionRows.Count - 2].GetComponent<ActionRowController>().actionButton;
+        lastButtonNav.selectOnDown = resetToDefaultButton;
+        rowController.actionButton.navigation = lastButtonNav;
+
+        // Set up the resetbutton nav
+        Navigation resetButtonNav = new Navigation();
+        resetButtonNav.mode = Navigation.Mode.Explicit;
+        resetButtonNav.selectOnUp = rowController.actionButton;
+        resetToDefaultButton.navigation = resetButtonNav;
+
+        //string[] names = Input.GetJoystickNames();
+        //foreach (string name in names)
+        //{
+        //    Debug.Log(name);
+        //}
     }
 
     void UpdateButtons()
     {
-        foreach (GameObject row in buttonRows)
+        foreach (GameObject row in actionRows)
         {
             InputAction action = null;
+            ActionRowController rowController = null;
             if (Enum.IsDefined(typeof(ActionName), row.name))
             {
-                action = InputManager.inputActions[(ActionName)Enum.Parse(typeof(ActionName), row.name)];
-                row.transform.FindChild("Button").FindChild("Text").GetComponent<Text>().text = action.GetAxisName();
+                action = InputManager.currentInputActions[(ActionName)Enum.Parse(typeof(ActionName), row.name)];
+                rowController = row.GetComponent<ActionRowController>();
+                rowController.actionButtonText.text = action.GetAxisDescription();
             }
             else
             {
                 // remove row?
-                row.transform.FindChild("Button").FindChild("Text").GetComponent<Text>().text = "UNKNOWN";
+                rowController.actionButtonText.text = "UNKNOWN";
             }
         }
     }
 
+    void ActivateCurrentInterfaceToggle()
+    {
+        switch (InputManager.GetCurrentInterface())
+        {
+            case (InputInterfaceType.KeyboardMouse):
+                keyboardToggle.isOn = true;
+                break;
+            case (InputInterfaceType.PS4Controller):
+                ps4Toggle.isOn = true;
+                break;
+            case (InputInterfaceType.XboxOneController):
+                xboxOneToggle.isOn = true;
+                break;
+            default:
+                break;
+        }
+    }
+
+    void SetHighlightGameObject(GameObject go, bool isEnabled)
+    {
+        GameObject parentGO = go.transform.parent.gameObject;
+        Image highlight = null;
+        if (parentGO != null)
+        {
+            highlight = parentGO.GetComponent<Image>();
+        }
+
+        if (highlight != null)
+        {
+            highlight.enabled = isEnabled;
+        }
+    }
+
     #region Button Event Handlers
-    public void StartAssignment()
+    public void StartAssignment(GameObject go = null, PointerEventData eventData = null)
     {
         if (!InputManager.waitingForKey)
         {
@@ -76,16 +160,70 @@ public class InputSettings : MonoBehaviour
 
             if (Enum.IsDefined(typeof(ActionName), actionName))
             {
-
+                if (go != null)
+                {
+                    SetHighlightGameObject(go, true);
+                }
                 StartCoroutine(InputManager.AssignNewAxisForAction((ActionName)Enum.Parse(typeof(ActionName), actionName)));
-                StartCoroutine(RecoveryPeriod());
+                StartCoroutine(RecoveryPeriod(go));
             }
         }
+    }
+
+    //public void InterfaceToggleChanged(bool value)
+    //{
+    //    if (value)
+    //    {
+    //        Toggle activeToggle = EventSystem.current.currentSelectedGameObject.GetComponent<Toggle>();
+    //        if (currentlyActiveInterfaceToggle != activeToggle)
+    //        {
+    //            currentlyActiveInterfaceToggle = activeToggle;
+    //            if (Enum.IsDefined(typeof(InputInterfaceType), currentlyActiveInterfaceToggle.name))
+    //                InputManager.SetCurrentInterface((InputInterfaceType)Enum.Parse(typeof(InputInterfaceType), currentlyActiveInterfaceToggle.name));
+    //            UpdateButtons();
+    //        }
+    //    }
+    //}
+
+    public void KeyboardInterfaceToggled(bool value)
+    {
+        if (value)
+        {
+            InputManager.SetCurrentInterface(InputInterfaceType.KeyboardMouse);
+            UpdateButtons();
+            InputManager.SaveMappings();
+        }
+    }
+
+    public void PS4InterfaceToggled(bool value)
+    {
+        if (value)
+        {
+            InputManager.SetCurrentInterface(InputInterfaceType.PS4Controller);
+            UpdateButtons();
+            InputManager.SaveMappings();
+        }
+    }
+
+    public void XboxOneInterfaceToggled(bool value)
+    {
+        if (value)
+        {
+            InputManager.SetCurrentInterface(InputInterfaceType.XboxOneController);
+            UpdateButtons();
+            InputManager.SaveMappings();
+        }
+    }
+
+    public void ResetToDefaultMappings()
+    {
+        InputManager.ResetMappings();
+        UpdateButtons();
     }
     #endregion
 
     #region Coroutines
-    IEnumerator RecoveryPeriod()
+    IEnumerator RecoveryPeriod(GameObject go = null, PointerEventData eventData = null)
     {
         // If we are waiting for a key... well... wait
         while (InputManager.waitingForKey)
@@ -94,7 +232,12 @@ public class InputSettings : MonoBehaviour
         }
         // Just wait a bit so you can't click a button and start the assignment process again instantly
         yield return new WaitForSeconds(0.15f);
+        if (go != null)
+        {
+            SetHighlightGameObject(go, false);
+        }
         UpdateButtons();
+        InputManager.SaveMappings();
     }
     #endregion
 }

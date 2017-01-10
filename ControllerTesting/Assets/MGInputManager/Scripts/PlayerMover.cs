@@ -12,7 +12,7 @@ public class PlayerMover : MonoBehaviour
 
     void CheckForMovement()
     {
-        float forwardAxis = InputManager.GetAxis(ActionName.MoveForeward);
+        float forwardAxis = InputManager.GetAxis(ActionName.MoveForward);
         float backwardAxis = InputManager.GetAxis(ActionName.MoveBackward);
         float leftAxis = InputManager.GetAxis(ActionName.StrafeLeft);
         float rightAxis = InputManager.GetAxis(ActionName.StrafeRight);

@@ -94,7 +94,7 @@ namespace MindGrown
                     if (InverseActionName != ActionName.None
                         && InputAxis.Offset == 0f)
                     {
-                        InputManager.inputActions[InverseActionName].ResetAxis();
+                        InputManager.currentInputActions[InverseActionName].ResetAxis();
                     }
                     ResetAxis();
                 }
@@ -119,7 +119,7 @@ namespace MindGrown
             AxisPolarity = newAxisPolarity;
             if (InverseActionName != ActionName.None)
             {
-                InputAction inverseAction = InputManager.inputActions[InverseActionName];
+                InputAction inverseAction = InputManager.currentInputActions[InverseActionName];
                 if (!isTrigger
                     && inverseAction.InputAxis != newInputAxis
                     && inverseAction.AxisPolarity != newAxisPolarity * -1)
@@ -168,13 +168,36 @@ namespace MindGrown
             return Mathf.Abs(axisValue);
         }
 
+        public float GetAxisRaw()
+        {
+            float axisValue = 0;
+            if (KeyCode != KeyCode.None)
+            {
+                //Debug.Log(Keycode);
+                // this is a key, get the status and return 0 for up, 1 for down
+                axisValue = Input.GetKey(KeyCode) ? 1f : 0f;
+            }
+
+            if (InputAxis != null)
+            {
+                //Debug.Log(AxisName);
+                //axisValue = Input.GetAxis(InputAxis.ToString());
+                axisValue = InputAxis.GetAxisRaw();
+                //Debug.Log(axisValue);
+                // This is an axis, get the actual axis value
+                axisValue = (AxisPolarity > 0 && axisValue > 0) || (AxisPolarity < 0 && axisValue < 0) ? axisValue : 0f;
+            }
+
+            return Mathf.Abs(axisValue);
+        }
+
         public string GetAxisName()
         {
             string axisNameWithPolarity;
 
             if (InputAxis != null)
             {
-                axisNameWithPolarity = InputAxis.InputManagerName;
+                axisNameWithPolarity = InputAxis.AxisName.ToString();
             }
             else if (KeyCode != KeyCode.None)
             {
@@ -207,7 +230,7 @@ namespace MindGrown
             }
             else if (KeyCode != KeyCode.None)
             {
-                axisNameWithPolarity = KeyCode.ToString();
+                axisNameWithPolarity = KeyCodeToDescription(KeyCode);
             }
             else
             {
@@ -224,6 +247,38 @@ namespace MindGrown
             }
 
             return axisNameWithPolarity;
+        }
+
+        string KeyCodeToDescription(KeyCode keyCode)
+        {
+            string keyCodeDescription = "";
+            
+            switch (keyCode)
+            {
+                case (KeyCode.Alpha0):
+                case (KeyCode.Alpha1):
+                case (KeyCode.Alpha2):
+                case (KeyCode.Alpha3):
+                case (KeyCode.Alpha4):
+                case (KeyCode.Alpha5):
+                case (KeyCode.Alpha6):
+                case (KeyCode.Alpha7):
+                case (KeyCode.Alpha8):
+                case (KeyCode.Alpha9):
+                    keyCodeDescription = keyCode.ToString().Substring(5);
+                    break;
+                case (KeyCode.Mouse0):
+                    keyCodeDescription = "Left-Click";
+                    break;
+                case (KeyCode.Mouse1):
+                    keyCodeDescription = "Right-Click";
+                    break;
+                default:
+                    keyCodeDescription = keyCode.ToString();
+                    break;
+            }
+
+            return keyCodeDescription;
         }
 
         #region Property Controlled Members

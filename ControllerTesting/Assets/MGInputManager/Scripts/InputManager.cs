@@ -9,13 +9,26 @@ namespace MindGrown
     public class InputManager : MonoBehaviour
     {
         public static InputManager instance;
-        //public static List<InputAction> inputActions;
-        public static Dictionary<ActionName, InputAction> inputActions;
+
         public static Dictionary<AxisName, InputAxis> inputAxis;
+
+        public static Dictionary<InputInterfaceType, List<AxisName>> ignoreAxisLists;
+        public static List<AxisName> currentIgnoreAxisList;
+
+        public static Dictionary<InputInterfaceType, Dictionary<ActionName, InputAction>> interfaceInputActions;
+        public static Dictionary<ActionName, InputAction> currentInputActions;
+
         public static bool waitingForKey = false;
 
         public string[] joysticks;
+        private static InputInterfaceType currentInterface;
+        private Event keyEvent;
+        private KeyCode keyEventKeyCode;
 
+        // TODO: >> This menuPanel code should be moved to a different handler (Menu or Settings Handler)
+        public GameObject menuPanel;
+        // <<
+    
         void Awake()
         {
             if (instance == null)
@@ -27,74 +40,173 @@ namespace MindGrown
             {
                 Destroy(gameObject);
             }
+
             PrepareAxis();
             PrepareActions();
             LoadMappings();
+            UpdateCurrentInterface();
             //ResetMappings();
         }
 
         void Update()
         {
             UpdateJoysticks();
+
+            // TODO: >> This menuPanel code should be moved to a different handler (Menu or Settings Handler)
+            if (Input.GetKeyDown(KeyCode.Escape) && !menuPanel.gameObject.activeSelf)
+            {
+                menuPanel.gameObject.SetActive(true);
+            }
+            else if (Input.GetKeyDown(KeyCode.Escape) && menuPanel.gameObject.activeSelf)
+            {
+                menuPanel.gameObject.SetActive(false);
+            }
+            // <<
+
+        }
+
+        void OnGUI()
+        {
+            keyEvent = Event.current;
+            if (keyEvent != null && keyEvent.isKey)
+            {
+                keyEventKeyCode = keyEvent.keyCode;
+            }
         }
 
         static void PrepareAxis()
         {
             inputAxis = new Dictionary<AxisName, InputAxis>
-        {
-            { AxisName.MouseX,              new InputAxis() { InputManagerName = "MouseX",              Description = "Mouse X",            isTurboAxis = true } },
-            { AxisName.MouseY,              new InputAxis() { InputManagerName = "MouseY",              Description = "Mouse Y",            isTurboAxis = true } },
-            { AxisName.MouseScrollwheel,    new InputAxis() { InputManagerName = "MouseScrollwheel",    Description = "Mouse Scrollwheel" } },
-            { AxisName.Joystick_1,          new InputAxis() { InputManagerName = "Joystick_1",          Description = "Joystick Axis 1" } },
-            { AxisName.Joystick_2,          new InputAxis() { InputManagerName = "Joystick_2",          Description = "Joystick Axis 2" } },
-            { AxisName.Joystick_3,          new InputAxis() { InputManagerName = "Joystick_3",          Description = "Joystick Axis 3" } },
-            { AxisName.Joystick_4,          new InputAxis() { InputManagerName = "Joystick_4",          Description = "Joystick Axis 4" } },
-            { AxisName.Joystick_5,          new InputAxis() { InputManagerName = "Joystick_5",          Description = "Joystick Axis 5" } },
-            { AxisName.Joystick_6,          new InputAxis() { InputManagerName = "Joystick_6",          Description = "Joystick Axis 6" } },
-            { AxisName.Joystick_7,          new InputAxis() { InputManagerName = "Joystick_7",          Description = "Joystick Axis 7" } },
-            { AxisName.Joystick_8,          new InputAxis() { InputManagerName = "Joystick_8",          Description = "Joystick Axis 8" } },
-            { AxisName.Joystick_9,          new InputAxis() { InputManagerName = "Joystick_9",          Description = "Joystick Axis 9" } },
-            { AxisName.Joystick_10,         new InputAxis() { InputManagerName = "Joystick_10",         Description = "Joystick Axis 10" } }
-        };
+            {
+                { AxisName.MouseX,              new InputAxis() { AxisName = AxisName.MouseX,           Description = "Mouse X",            isTurboAxis = true } },
+                { AxisName.MouseY,              new InputAxis() { AxisName = AxisName.MouseY,           Description = "Mouse Y",            isTurboAxis = true } },
+                { AxisName.MouseScrollwheel,    new InputAxis() { AxisName = AxisName.MouseScrollwheel, Description = "Mouse Scrollwheel" } },
+                { AxisName.Joystick_1,          new InputAxis() { AxisName = AxisName.Joystick_1,       Description = "Joystick Axis 1" } },
+                { AxisName.Joystick_2,          new InputAxis() { AxisName = AxisName.Joystick_2,       Description = "Joystick Axis 2" } },
+                { AxisName.Joystick_3,          new InputAxis() { AxisName = AxisName.Joystick_3,       Description = "Joystick Axis 3" } },
+                { AxisName.Joystick_4,          new InputAxis() { AxisName = AxisName.Joystick_4,       Description = "Joystick Axis 4" } },
+                { AxisName.Joystick_5,          new InputAxis() { AxisName = AxisName.Joystick_5,       Description = "Joystick Axis 5" } },
+                { AxisName.Joystick_6,          new InputAxis() { AxisName = AxisName.Joystick_6,       Description = "Joystick Axis 6" } },
+                { AxisName.Joystick_7,          new InputAxis() { AxisName = AxisName.Joystick_7,       Description = "Joystick Axis 7" } },
+                { AxisName.Joystick_8,          new InputAxis() { AxisName = AxisName.Joystick_8,       Description = "Joystick Axis 8" } },
+                { AxisName.Joystick_9,          new InputAxis() { AxisName = AxisName.Joystick_9,       Description = "Joystick Axis 9" } },
+                { AxisName.Joystick_10,         new InputAxis() { AxisName = AxisName.Joystick_10,      Description = "Joystick Axis 10" } }
+            };
+
+            ignoreAxisLists = new Dictionary<InputInterfaceType, List<AxisName>>()
+            {
+                { InputInterfaceType.KeyboardMouse, new List<AxisName>()
+                {
+                    AxisName.Joystick_1,
+                    AxisName.Joystick_2,
+                    AxisName.Joystick_3,
+                    AxisName.Joystick_4,
+                    AxisName.Joystick_5,
+                    AxisName.Joystick_6,
+                    AxisName.Joystick_7,
+                    AxisName.Joystick_8,
+                    AxisName.Joystick_9,
+                    AxisName.Joystick_10
+                }
+                },
+                { InputInterfaceType.PS4Controller, new List<AxisName>()
+                {
+                    //AxisName.MouseScrollwheel,
+                    //AxisName.MouseX,
+                    //AxisName.MouseY
+                }
+                },
+                { InputInterfaceType.XboxOneController, new List<AxisName>()
+                {
+                    //AxisName.MouseScrollwheel,
+                    //AxisName.MouseX,
+                    //AxisName.MouseY
+                    AxisName.Joystick_3,
+                    AxisName.Joystick_6
+                }
+                }
+            };
         }
 
         // Assign each keycode when the game starts (get from player prefs or assign the default)
         static void PrepareActions()
         {
-            bool isSavedPreferences = false;
-            if (!isSavedPreferences)
-            {
-                inputActions = new Dictionary<ActionName, InputAction>
-            {
-                { ActionName.MenuNavUp,     new InputAction() { Name = ActionName.MenuNavUp,        KeyCode = KeyCode.UpArrow,      Description = "Menu Nav Up" } },
-                { ActionName.MenuNavDown,   new InputAction() { Name = ActionName.MenuNavDown,      KeyCode = KeyCode.DownArrow,    Description = "Menu Nav Down" } },
-                { ActionName.MenuNavLeft,   new InputAction() { Name = ActionName.MenuNavLeft,      KeyCode = KeyCode.LeftArrow,    Description = "Menu Nav Left" } },
-                { ActionName.MenuNavRight,  new InputAction() { Name = ActionName.MenuNavRight,     KeyCode = KeyCode.RightArrow,   Description = "Menu Nav Right" } },
-                { ActionName.MoveForeward,  new InputAction() { Name = ActionName.MoveForeward,     KeyCode = KeyCode.W,            Description = "Move Forward",       InverseActionName = ActionName.MoveBackward } },
-                { ActionName.MoveBackward,  new InputAction() { Name = ActionName.MoveBackward,     KeyCode = KeyCode.S,            Description = "Move Backward",      InverseActionName = ActionName.MoveForeward } },
-                { ActionName.StrafeLeft,    new InputAction() { Name = ActionName.StrafeLeft,       KeyCode = KeyCode.A,            Description = "Strafe Left",        InverseActionName = ActionName.StrafeRight } },
-                { ActionName.StrafeRight,   new InputAction() { Name = ActionName.StrafeRight,      KeyCode = KeyCode.D,            Description = "Strafe Right",       InverseActionName = ActionName.StrafeLeft } }
-// { ActionName.MoveForward,    new InputAction() { Name = ActionName.MoveForward,  InputAxis = inputAxis[AxisName.MouseY],             AxisPolarity = 1,   InverseActionName = ActionName.MoveForward } },
-// { ActionName.MoveBackward,   new InputAction() { Name = ActionName.MoveBackward, InputAxis = inputAxis[AxisName.MouseY],             AxisPolarity = -1,  InverseActionName = ActionName.MoveBackward } },
+            interfaceInputActions = new Dictionary<InputInterfaceType, Dictionary<ActionName, InputAction>>()
+            { { InputInterfaceType.KeyboardMouse, new Dictionary<ActionName, InputAction>()
+                {
+                    { ActionName.MoveForward,   new InputAction() { Name = ActionName.MoveForward,      KeyCode = KeyCode.W,                Description = "Move Forward",       InverseActionName = ActionName.MoveBackward } },
+                    { ActionName.MoveBackward,  new InputAction() { Name = ActionName.MoveBackward,     KeyCode = KeyCode.S,                Description = "Move Backward",      InverseActionName = ActionName.MoveForward } },
+                    { ActionName.StrafeRight,   new InputAction() { Name = ActionName.StrafeRight,      KeyCode = KeyCode.D,                Description = "Strafe Right",       InverseActionName = ActionName.StrafeLeft } },
+                    { ActionName.StrafeLeft,    new InputAction() { Name = ActionName.StrafeLeft,       KeyCode = KeyCode.A,                Description = "Strafe Left",        InverseActionName = ActionName.StrafeRight } }
+                }
+                },
+                { InputInterfaceType.PS4Controller, new Dictionary<ActionName, InputAction>()
+                {
+                    { ActionName.MoveForward,   new InputAction() { Name = ActionName.MoveForward,      InputAxis = inputAxis[AxisName.Joystick_2], AxisPolarity = -1,       Description = "Move Forward",           InverseActionName = ActionName.MoveBackward } },
+                    { ActionName.MoveBackward,  new InputAction() { Name = ActionName.MoveBackward,     InputAxis = inputAxis[AxisName.Joystick_2], AxisPolarity = 1,      Description = "Move Backward",          InverseActionName = ActionName.MoveForward } },
+                    { ActionName.StrafeRight,   new InputAction() { Name = ActionName.StrafeRight,      InputAxis = inputAxis[AxisName.Joystick_1], AxisPolarity = 1,       Description = "Strafe Right",       InverseActionName = ActionName.StrafeLeft } },
+                    { ActionName.StrafeLeft,    new InputAction() { Name = ActionName.StrafeLeft,       InputAxis = inputAxis[AxisName.Joystick_1], AxisPolarity = -1,      Description = "Strafe Left",            InverseActionName = ActionName.StrafeRight } },
+                }
+                },
+                { InputInterfaceType.XboxOneController, new Dictionary<ActionName, InputAction>()
+                {
+                    { ActionName.MoveForward,   new InputAction() { Name = ActionName.MoveForward,      InputAxis = inputAxis[AxisName.Joystick_2], AxisPolarity = -1,       Description = "Move Forward",           InverseActionName = ActionName.MoveBackward } },
+                    { ActionName.MoveBackward,  new InputAction() { Name = ActionName.MoveBackward,     InputAxis = inputAxis[AxisName.Joystick_2], AxisPolarity = 1,      Description = "Move Backward",          InverseActionName = ActionName.MoveForward } },
+                    { ActionName.StrafeRight,   new InputAction() { Name = ActionName.StrafeRight,      InputAxis = inputAxis[AxisName.Joystick_1], AxisPolarity = 1,       Description = "Strafe Right",       InverseActionName = ActionName.StrafeLeft } },
+                    { ActionName.StrafeLeft,    new InputAction() { Name = ActionName.StrafeLeft,       InputAxis = inputAxis[AxisName.Joystick_1], AxisPolarity = -1,      Description = "Strafe Left",            InverseActionName = ActionName.StrafeRight } }
+                } }
             };
-            }
+
+            SetCurrentInterface(InputInterfaceType.KeyboardMouse);
+        }
+
+        static void UpdateCurrentInterface()
+        {
+            // Should probably do something to check what the last active interface was.
+            currentInputActions = interfaceInputActions[currentInterface];
+            currentIgnoreAxisList = ignoreAxisLists[currentInterface];
+        }
+
+        public static void SetCurrentInterface(InputInterfaceType type)
+        {
+            //if (currentInterface != type)
+            //{
+                currentInterface = type;
+                UpdateCurrentInterface();
+            //}
+        }
+
+        public static InputInterfaceType GetCurrentInterface()
+        {
+            return currentInterface;
         }
 
         public static float GetAxis(ActionName actionName)
         {
-            float actionValue = 0;
-            InputAction action = inputActions[actionName];
+            float axisValue = 0f;
+            InputAction action = currentInputActions[actionName];
             if (action != null)
             {
-                actionValue = action.GetAxis();
+                axisValue = action.GetAxis();
             }
-            return actionValue;
+            return axisValue;
+        }
+        
+        public static float GetAxisRaw(ActionName actionName)
+        {
+            float axisValue = 0f;
+            InputAction action = currentInputActions[actionName];
+            if (action != null)
+            {
+                axisValue = action.GetAxisRaw();
+            }
+            return axisValue;
         }
 
         public static void RevokeAxis(InputAxis axis, int polarity)
         {
             InputAction action = null;
-            foreach (KeyValuePair<ActionName, InputAction> entry in inputActions)
+            foreach (KeyValuePair<ActionName, InputAction> entry in currentInputActions)
             {
                 action = entry.Value;
 
@@ -109,7 +221,7 @@ namespace MindGrown
         public static void RevokeKeyCode(KeyCode keyCode)
         {
             InputAction action = null;
-            foreach (KeyValuePair<ActionName, InputAction> entry in inputActions)
+            foreach (KeyValuePair<ActionName, InputAction> entry in currentInputActions)
             {
                 action = entry.Value;
 
@@ -155,18 +267,18 @@ namespace MindGrown
                     if (axis == null)
                         continue;
 
-                    float axisValue = Input.GetAxis(axis.InputManagerName);
+                    float axisValue = Input.GetAxis(axis.AxisName.ToString());
                     if (axisValue == 1)
                     {
                         // This is a bad axis (either disable or -1?)
                         axis.Offset = -1f;
-                        Debug.Log("BAD AXIS! " + axis.InputManagerName + " " + axis.Offset);
+                        Debug.Log("BAD AXIS! " + axis.AxisName + " " + axis.Offset);
                     }
                     if (axisValue == -1)
                     {
                         // This is a bad axis (either disable or +1?)
                         axis.Offset = 1f;
-                        Debug.Log("BAD AXIS! " + axis.InputManagerName + " " + axis.Offset);
+                        Debug.Log("BAD AXIS! " + axis.AxisName + " " + axis.Offset);
                     }
                 }
                 // Check each button
@@ -182,6 +294,7 @@ namespace MindGrown
             InputAxis newInputAxis = null;
             KeyCode newKeyCode = KeyCode.None;
             float axisValue = 0;
+            Event keyEvent = null;
 
             while (newKeyCode == KeyCode.None && newInputAxis == null)
             {
@@ -194,6 +307,7 @@ namespace MindGrown
                         continue;
 
                     axisValue = axis.GetAxis();
+
                     if (axisValue > 0.5f || axisValue < -0.5f)
                     {
                         newInputAxis = axis;
@@ -244,43 +358,66 @@ namespace MindGrown
                     break;
 
                 // Check Keycodes
-                if (!string.IsNullOrEmpty(Input.inputString))
-                {
-                    if (Enum.IsDefined(typeof(KeyCode), Input.inputString.Substring(0, 1).ToUpper()))
-                    {
-                        // The axis is a keycode?
-                        newKeyCode = (KeyCode)Enum.Parse(typeof(KeyCode), Input.inputString.Substring(0, 1).ToUpper());
-                        axisValue = 1f;
-                    }
+                // TODO: Get the keycode not the string so that "Tab" and others are remappable.
+                //if (!string.IsNullOrEmpty(Input.inputString))
+                //{
+                //    if (Enum.IsDefined(typeof(KeyCode), Input.inputString.Substring(0, 1).ToUpper()))
+                //    {
+                //        // The axis is a keycode?
+                //        newKeyCode = (KeyCode)Enum.Parse(typeof(KeyCode), Input.inputString.Substring(0, 1).ToUpper());
+                //        axisValue = 1f;
+                //    }
+                //}
 
+                keyEvent = instance.keyEvent;
+                if (keyEvent != null && keyEvent.isKey)
+                {
+                    Debug.Log(keyEvent.keyCode.ToString());
+                    newKeyCode = keyEvent.keyCode;
+                    axisValue = 1f;
                 }
             }
 
             if (newInputAxis != null)
             {
                 int axisValueInt = axisValue > 0 ? Mathf.CeilToInt(axisValue) : Mathf.FloorToInt(axisValue);
-                inputActions[actionName].RemapAxis(newInputAxis, axisValueInt);
+                currentInputActions[actionName].RemapAxis(newInputAxis, axisValueInt);
             }
             else if (newKeyCode != KeyCode.None)
             {
-                inputActions[actionName].RemapAxis(newKeyCode);
+                currentInputActions[actionName].RemapAxis(newKeyCode);
             }
 
             waitingForKey = false;
-            SaveMappings();
+            //SaveMappings();
         }
         #endregion
 
         #region Mapping Persistance
-        static void SaveMappings()
+        public static void SaveMappings()
         {
+            InputInterfaceType interfaceType;
+            Dictionary<ActionName, InputAction> actions;
             InputAction action = null;
 
-            foreach (KeyValuePair<ActionName, InputAction> entry in inputActions)
+            foreach (KeyValuePair<InputInterfaceType, Dictionary<ActionName, InputAction>> entry in interfaceInputActions)
             {
-                action = entry.Value;
-                PlayerPrefs.SetString(action.Name.ToString(), action.GetAxisName());
+                interfaceType = entry.Key;
+                actions = entry.Value;
+                foreach (KeyValuePair<ActionName, InputAction> innerEntry in actions)
+                {
+                    action = innerEntry.Value;
+                    PlayerPrefs.SetString(interfaceType.ToString() + action.Name.ToString(), action.GetAxisName());
+                    //Debug.Log("SAVE-->Key: " + interfaceType.ToString() + action.Name.ToString() + " Value: " + action.GetAxisName());
+                }
             }
+            SaveCurrentInterface();
+        }
+
+        static void SaveCurrentInterface()
+        {
+            // Save the currently selected input type
+            PlayerPrefs.SetString("CurrentInputInterface", currentInterface.ToString());
         }
 
         static void LoadMappings()
@@ -293,87 +430,112 @@ namespace MindGrown
             string playerPrefPolarityString = "";
             string axisNameString = "";
             int axisPolarity = 0;
-            foreach (string actionNameString in actionNames)
+            //InputInterfaceType loadingInterface = InputInterfaceType.None;
+            foreach (string interfaceType in Enum.GetNames(typeof(InputInterfaceType)))
             {
-                playerPrefString = PlayerPrefs.GetString(actionNameString);
-                // Reset all values
-                actionName = ActionName.None;
-                axisName = AxisName.None;
-                axisNameString = "";
-                axisPolarity = 0;
-                playerPrefPolarityString = "";
-
-                // Make sure polarity doesn't end up out of range
-                if (playerPrefString.Length > 2)
+                if (!interfaceType.Equals("None"))
                 {
-                    playerPrefPolarityString = playerPrefString.Substring(playerPrefString.Length - 2);
-                }
+                    if (Enum.IsDefined(typeof(InputInterfaceType), interfaceType))
+                        currentInputActions = interfaceInputActions[(InputInterfaceType)Enum.Parse(typeof(InputInterfaceType), interfaceType)];
+                        //loadingInterface = (InputInterfaceType)Enum.Parse(typeof(InputInterfaceType), interfaceType);
 
-                // Get the action
-                if (Enum.IsDefined(typeof(ActionName), actionNameString))
-                {
-                    actionName = (ActionName)Enum.Parse(typeof(ActionName), actionNameString);
-                    if (inputActions.ContainsKey(actionName))
+                    foreach (string actionNameString in actionNames)
                     {
-                        action = inputActions[actionName];
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }
-                else
-                {
-                    continue;
-                }
+                        playerPrefString = PlayerPrefs.GetString(interfaceType + actionNameString);
+                        if (actionNameString == "None")
+                            continue;
 
-                // Based on prefpolarity, get the axis name and polarity value
-                if (playerPrefPolarityString.Equals(" +"))
-                {
-                    axisNameString = playerPrefString.Substring(0, playerPrefString.Length - 2);
-                    axisPolarity = 1;
-                }
-                else if (playerPrefPolarityString.Equals(" -"))
-                {
-                    axisNameString = playerPrefString.Substring(0, playerPrefString.Length - 2);
-                    axisPolarity = -1;
-                }
-                else
-                {
-                    axisNameString = playerPrefString;
-                }
+                        // Reset all values
+                        actionName = ActionName.None;
+                        axisName = AxisName.None;
+                        axisNameString = "";
+                        axisPolarity = 0;
+                        playerPrefPolarityString = "";
 
-                // Reset all the axis and go to next action if it is saved as no assignment
-                if (axisNameString.Equals("No Assignment"))
-                {
-                    action.ResetKeycode();
-                    action.ResetAxis();
-                    continue;
-                }
-                if (axisNameString.Equals(""))
-                {
-                    // Remove the pref and continue?
-                    continue;
-                }
+                        // Make sure polarity doesn't end up out of range
+                        if (playerPrefString.Length > 2)
+                        {
+                            playerPrefPolarityString = playerPrefString.Substring(playerPrefString.Length - 2);
+                        }
 
-                // Set it to an axis if it is an axis
-                if (Enum.IsDefined(typeof(AxisName), axisNameString))
-                {
-                    axisName = (AxisName)Enum.Parse(typeof(AxisName), axisNameString);
-                    if (inputAxis.ContainsKey(axisName))
-                    {
-                        action.RemapAxis(inputAxis[axisName], axisPolarity);
+                        // Get the action
+                        if (Enum.IsDefined(typeof(ActionName), actionNameString))
+                        {
+                            actionName = (ActionName)Enum.Parse(typeof(ActionName), actionNameString);
+                            //if (interfaceInputActions[loadingInterface].ContainsKey(actionName))
+                            //{
+                            //    action = interfaceInputActions[loadingInterface][actionName];
+                            //}
+                            if (currentInputActions.ContainsKey(actionName))
+                            {
+                                action = currentInputActions[actionName];
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            continue;
+                        }
+
+                        // Based on prefpolarity, get the axis name and polarity value
+                        if (playerPrefPolarityString.Equals(" +"))
+                        {
+                            axisNameString = playerPrefString.Substring(0, playerPrefString.Length - 2);
+                            axisPolarity = 1;
+                        }
+                        else if (playerPrefPolarityString.Equals(" -"))
+                        {
+                            axisNameString = playerPrefString.Substring(0, playerPrefString.Length - 2);
+                            axisPolarity = -1;
+                        }
+                        else
+                        {
+                            axisNameString = playerPrefString;
+                        }
+
+                        // Reset all the axis and go to next action if it is saved as no assignment
+                        if (axisNameString.Equals("No Assignment"))
+                        {
+                            action.ResetKeycode();
+                            action.ResetAxis();
+                            continue;
+                        }
+                        if (axisNameString.Equals(""))
+                        {
+                            // Remove the pref and continue?
+                            continue;
+                        }
+
+                        // Set it to an axis if it is an axis
+                        if (Enum.IsDefined(typeof(AxisName), axisNameString))
+                        {
+                            axisName = (AxisName)Enum.Parse(typeof(AxisName), axisNameString);
+                            if (inputAxis.ContainsKey(axisName))
+                            {
+                                action.RemapAxis(inputAxis[axisName], axisPolarity);
+                            }
+                        }
+                        else if (Enum.IsDefined(typeof(KeyCode), axisNameString))
+                        {
+                            action.RemapAxis((KeyCode)Enum.Parse(typeof(KeyCode), axisNameString));
+                        }
+
+                        //Debug.Log("LOAD-->Key: " + interfaceType.ToString() + actionNameString + " Value: " + action.GetAxisName());
                     }
-                }
-                else if (Enum.IsDefined(typeof(KeyCode), axisNameString))
-                {
-                    action.RemapAxis((KeyCode)Enum.Parse(typeof(KeyCode), axisNameString));
                 }
             }
 
+            string newCurrentInterface = PlayerPrefs.GetString("CurrentInputInterface");
+            if (Enum.IsDefined(typeof(InputInterfaceType), newCurrentInterface))
+            {
+                SetCurrentInterface((InputInterfaceType)Enum.Parse(typeof(InputInterfaceType), newCurrentInterface));
+            }
         }
 
-        static void ResetMappings()
+        public static void ResetMappings()
         {
             PrepareActions();
             SaveMappings();
@@ -385,29 +547,10 @@ namespace MindGrown
     public enum ActionName
     {
         None,
-        MenuNavUp,
-        MenuNavDown,
-        MenuNavLeft,
-        MenuNavRight,
-        MenuAccept,
-        MenuCancel,
-        MoveForeward,
+        MoveForward,
         MoveBackward,
         StrafeLeft,
-        StrafeRight,
-        RotateLeft,
-        RotateRight,
-        ShootPrimary,
-        ShootSecondary,
-        UseAbility,
-        TargetToggle,
-        FocusOnTarget,
-        SettingsMenu,
-        GameMenu,
-        QuickSelect_1,
-        QuickSelect_2,
-        QuickSelect_3,
-        QuickSelect_4
+        StrafeRight
     }
     #endregion
 
@@ -436,9 +579,7 @@ namespace MindGrown
     {
         None,
         KeyboardMouse,
-        GenericJoystick,
         PS4Controller,
-        Xbox360Controller,
         XboxOneController
     }
     #endregion

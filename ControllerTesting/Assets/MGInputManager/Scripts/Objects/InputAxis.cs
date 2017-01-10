@@ -5,26 +5,26 @@ namespace MindGrown
 {
     public class InputAxis
     {
-        public string InputManagerName { get; set; }
+        public AxisName AxisName { get; set; }
         public string Description { get; set; }
         public float Offset { get; set; }
         public bool isTurboAxis { get; set; }
 
         public InputAxis()
         {
-            InitializationHelper("None", "None", 0f, false);
+            InitializationHelper(AxisName.None, "None", 0f, false);
         }
 
-        public InputAxis(string name, string desc, float offset = 0f, bool turbo=false)
+        public InputAxis(AxisName name, string desc, float offset = 0f, bool turbo=false)
         {
             InitializationHelper(name, desc, offset, turbo);
         }
 
-        void InitializationHelper(string name, string desc, float offset, bool turbo)
+        void InitializationHelper(AxisName name, string desc, float offset, bool turbo)
         {
             if (true)
             {
-                InputManagerName = name;
+                AxisName = name;
                 Description = desc;
                 Offset = offset;
                 isTurboAxis = turbo;
@@ -33,11 +33,35 @@ namespace MindGrown
 
         public float GetAxis()
         {
-            float axisValue = Input.GetAxis(InputManagerName) + Offset;
+            if (InputManager.currentIgnoreAxisList.Contains(AxisName))
+            {
+                // Ignore the axis
+                return 0f;
+            }
+            float axisValue = Input.GetAxis(AxisName.ToString()) + Offset;
+            return Normalize(axisValue);
+                
+        }
+
+        public float GetAxisRaw()
+        {
+            if (InputManager.currentIgnoreAxisList.Contains(AxisName))
+            {
+                // Ignore the axis
+                return 0f;
+            }
+            float axisValue = Input.GetAxisRaw(AxisName.ToString()) + Offset;
+            return Normalize(axisValue);
+        }
+
+        float Normalize(float initialValue)
+        {
+            float axisValue = initialValue;
             if (!isTurboAxis)
             {
-                axisValue = axisValue > 1f ? 1f : axisValue;
-                axisValue = axisValue < -1f ? -1f : axisValue;
+                axisValue = Mathf.Clamp(axisValue, -1f, 1f);
+                //axisValue = axisValue > 1f ? 1f : axisValue;
+                //axisValue = axisValue < -1f ? -1f : axisValue;
             }
             return axisValue;
         }
