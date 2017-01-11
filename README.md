@@ -1,6 +1,8 @@
 # MGInputManager
 A Unity 3D project demonstrating a custom input manager with in game remapping and controller support. Initally developed for an indie game I'm working on, Convicted Galaxy. This project is free for anyone to use. If you make improvements, please keep a version free and open to the community.
 
+If you want to show your support, let @rrbemo on twitter. Our Convicted Galaxy Kickstarter is also live: http://www.convictedgalaxy.com/launch
+
 # Requires
 - Unity 3D (Built with 5.3.4 Personal).
 
